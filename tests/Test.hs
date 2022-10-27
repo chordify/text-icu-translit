@@ -4,6 +4,7 @@ import Test.QuickCheck
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.ICU as U
+import qualified Data.Text.ICU.Normalize2 as UN
 import Data.Text.ICU.Translit
 import Text.Printf
 import Data.Char
@@ -43,7 +44,7 @@ prop_idemp (IdempTr t,s) = transliterate tr (transliterate tr s) == transliterat
     where tr = trans t
 prop_toLower' t = U.toLower U.Root t == transliterate (trans "Lower") t
 prop_toLower t = T.toLower t == transliterate (trans "Lower") t
-prop_NFC t = U.normalize U.NFC t == transliterate (trans "NFC") t
+prop_NFC t = UN.normalize UN.NFC t == transliterate (trans "NFC") t
 prop_hexUnicode t = hexUnicode t == transliterate (trans "hex/unicode") t
 
 
