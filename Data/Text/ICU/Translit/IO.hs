@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE CPP #-}
 
 module Data.Text.ICU.Translit.IO
  where
@@ -8,7 +9,9 @@ import Foreign
 import Data.Text
 import Data.Text.Foreign
 import Data.Text.ICU.Translit.ICUHelper
+#if MIN_VERSION_text(2,0,0)
 import Foreign.C.String (CString)
+#endif
 
 data UTransliterator
 
@@ -35,7 +38,7 @@ instance Show Transliterator where
 
 transliterator :: Text -> IO Transliterator
 transliterator spec =
-    useAsUCharPtr spec $ \ptr len -> do
+    compatUseAsPtr spec $ \ptr len -> do
            q <- handleError $ openTrans ptr (fromIntegral len)
            ref <- newForeignPtr closeTrans q
            touchForeignPtr ref
@@ -44,18 +47,34 @@ transliterator spec =
 
 transliterate :: Transliterator -> Text -> IO Text
 transliterate tr txt = do
-  (fptr, len) <- asUCharForeignPtr txt
+  (fptr, len) <- compatAsForeignPtr txt
   withForeignPtr fptr $ \ptr ->
       withForeignPtr (transPtr tr) $ \tr_ptr -> do
              handleFilledOverflowError ptr (fromIntegral len)
                  (\dptr dlen ->
                         doTrans tr_ptr dptr (fromIntegral len) (fromIntegral dlen))
                  (\dptr dlen ->
-                        fromUCharPtr dptr (fromIntegral dlen))
+                        compatFromPtr dptr (fromIntegral dlen))
 
+
+
+compatUseAsPtr :: Text -> (Ptr UChar -> I16 -> IO a) -> IO a
+compatAsForeignPtr :: Text -> IO (ForeignPtr UChar, I16)
+compatFromPtr :: Ptr UChar -> I16 -> IO Text
+
+#if !MIN_VERSION_text(2,0,0)
+
+compatUseAsPtr = useAsPtr
+compatAsForeignPtr = asForeignPtr
+compatFromPtr = fromPtr
+
+#else
+
+compatUseAsPtr = useAsUCharPtr
+compatAsForeignPtr = asUCharForeignPtr
+compatFromPtr = fromUCharPtr
 
 -- Stolen from a hidden module from https://github.com/haskell/text-icu
-
 useAsUCharPtr :: Text -> (Ptr UChar -> I16 -> IO a) -> IO a
 useAsUCharPtr t act = useAsPtr t $ \tptr tlen ->
     allocaArray (fromIntegral tlen) $ \ dst ->
@@ -95,3 +114,5 @@ foreign import ccall "text_icu.h __hs_u_strToUTF8" u_strToUTF8
 
 newtype I16 = I16 Int
     deriving (Bounded, Enum, Eq, Integral, Num, Ord, Read, Real, Show)
+
+#endif
