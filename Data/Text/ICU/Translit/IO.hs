@@ -6,7 +6,7 @@ module Data.Text.ICU.Translit.IO
  where
 
 import Foreign
-import Data.Text
+import Data.Text (Text)
 import Data.Text.Foreign
 import Data.Text.ICU.Translit.ICUHelper
 #if MIN_VERSION_text(2,0,0)
